@@ -91,29 +91,32 @@ class Server {
 			}
 		});
 
-		this.app.post("/test-download-file", async (req, res) => {
+		this.app.post("/download_from_url", async (req, res) => {
 			const { url } = req.body;
 
 			console.log("Request: start-downloading");
 
+			const server = this;
 			this.grpcClient
 				.downloadFile()
 				.sendMessage({ url })
 				.then(async (bufferArray) => {
-					console.log("*********");
 					const buffer = Buffer.concat(
 						bufferArray.map((d) => Buffer.from(d.data.buffer)),
 					);
-					console.log("buffer: ", buffer);
-					return await redirect({ req, res, buffer });
+					console.log('bufferArray[0]', bufferArray[0]);
+					server.nameMp3 = bufferArray[0].file_name;
+					return await redirect({ req, res, buffer, server });
 				})
 				.catch((err) => console.error(err));
 		});
 
+		/** 
+		 // OLD DOWNLOAD
 		this.app.post("/uploadFile", async (req, res) => {
 			oldUpload({ req, res });
 		}); //END POST
-
+ 		*/
 		this.app.get("/transcribeFile", (req, res) => {
 			res.sendFile(`${dirname}/public/transcribeFile.html`);
 		});
@@ -185,7 +188,6 @@ class Server {
 const uploadUrl = async ({ server, buffer }) => {
 	let duration = getMP3Duration(buffer);
 	console.log("duration: ", duration);
-
 	server.stackUploads.push({
 		name: server.nameMp3,
 		path: server.pathAudio,
@@ -244,8 +246,8 @@ const uploadUrl = async ({ server, buffer }) => {
 	return session.url;
 };
 
-const redirect = async ({ req, res, buffer }) => {
-	const sessionUrl = await uploadUrl({ server: this, buffer });
+const redirect = async ({ req, res, server, buffer }) => {
+	const sessionUrl = await uploadUrl({ server, buffer });
 	return res.redirect(303, sessionUrl);
 };
 

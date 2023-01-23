@@ -66,10 +66,15 @@
                 
                     <div>
 
-                        <form action="/uploadFile" method="post" enctype="multipart/form-data" target="_blank">
+                        <form action="/download_from_url" method="post" target="_blank">
+                            <input id="url" type="text" name="url" value="https://www.youtube.com/watch?v=QAQ3eJCdTc8">
+                            <input id="btnDownloadFromYoutube" type="submit" value="DOWNLOAD FROM YOUTUBE URL">
+                        </form>
+
+                        <!-- <form action="/uploadFile" method="post" enctype="multipart/form-data" target="_blank">
                             <input id="file" type="file" name="file">
                             <input id="btnUpload" type="submit" value="UPLOAD MP3 FILE">
-                        </form>
+                        </form> -->
                 
                         <span class="parpadea text" id="labelSpan"></span>
                         <script>
