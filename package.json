@@ -16,12 +16,16 @@
   "author": "Yin Freeman",
   "license": "MIT",
   "dependencies": {
+    "@grpc/grpc-js": "^1.8.4",
     "body-parser": "^1.20.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.2",
     "express": "^4.18.1",
     "express-fileupload": "^1.4.0",
     "get-mp3-duration": "^1.0.0",
+    "google-protobuf": "^3.21.2",
+    "grpc": "^1.24.11",
+    "grpc-promise": "^1.4.0",
     "revai-node-sdk": "^3.5.1",
     "stripe": "^10.8.0"
   },
