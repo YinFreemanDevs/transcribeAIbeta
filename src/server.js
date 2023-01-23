@@ -13,8 +13,8 @@ const protoLoader = require("@grpc/proto-loader");
 const grpc_promise = require("grpc-promise");
 dotenv.config();
 
-const PROTO_PATH =process.env.PROTO_PATH;
-const GRPC_SERVER =process.env.GRPC_SERVER;
+const PROTO_PATH = process.env.PROTO_PATH;
+const GRPC_SERVER = process.env.GRPC_SERVER;
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 	keepCase: true,
@@ -94,14 +94,16 @@ class Server {
 		this.app.post("/test-download-file", async (req, res) => {
 			const { url } = req.body;
 
-			console.log('Request: start-downloading');
+			console.log("Request: start-downloading");
 
 			this.grpcClient
 				.downloadFile()
 				.sendMessage({ url })
 				.then(async (bufferArray) => {
-					console.log("*********");					
-					const buffer = Buffer.concat(bufferArray.map((d) => Buffer.from(d.data.buffer)));
+					console.log("*********");
+					const buffer = Buffer.concat(
+						bufferArray.map((d) => Buffer.from(d.data.buffer)),
+					);
 					console.log("buffer: ", buffer);
 					return await redirect({ req, res, buffer });
 				})
