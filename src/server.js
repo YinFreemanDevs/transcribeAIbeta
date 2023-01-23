@@ -50,7 +50,6 @@ class Server {
 		this.pathAudio = "";
 
 		this.sessionURL = "";
-		this.nameTxt = "";
 		this.nameMp3 = "";
 		this.duration = 0;
 		this.fail = false;
@@ -93,22 +92,42 @@ class Server {
 
 		this.app.post("/download_from_url", async (req, res) => {
 			const { url } = req.body;
+			const server = this;
 
 			console.log("Request: start-downloading");
 
-			const server = this;
+			// If is already transcripted then retrieve from db
+
 			this.grpcClient
-				.downloadFile()
-				.sendMessage({ url })
-				.then(async (bufferArray) => {
-					const buffer = Buffer.concat(
-						bufferArray.map((d) => Buffer.from(d.data.buffer)),
-					);
-					console.log('bufferArray[0]', bufferArray[0]);
-					server.nameMp3 = bufferArray[0].file_name;
-					return await redirect({ req, res, buffer, server });
+				.read()
+				.sendMessage({ id: url })
+				.then((video) => {
+					if (video.transcription === "") {
+						// TODO: throw error
+					}
+
+					res.set({
+						"Content-Disposition": `attachment; filename="${video.file_name}"`,
+					});
+					res.send(video.transcription);
 				})
-				.catch((err) => console.error(err));
+				.catch((err) => {
+					console.error(err);
+					if (err.name === "") {
+						this.grpcClient
+							.downloadFile()
+							.sendMessage({ url })
+							.then(async (bufferArray) => {
+								const buffer = Buffer.concat(
+									bufferArray.map((d) => Buffer.from(d.data.buffer)),
+								);
+								console.log("bufferArray[0]", bufferArray[0]);
+								server.nameMp3 = bufferArray[0].file_name;
+								return await redirect({ req, res, buffer, server });
+							})
+							.catch((err) => console.error(err));
+					}
+				});
 		});
 
 		/** 
@@ -152,11 +171,30 @@ class Server {
 					if (this.stackUploads[x].done === true) {
 						console.log(`transcribe ${x}:`, this.stackUploads[x].name);
 						this.stackUploads[x].ended = true;
-						const jobID = await transcribe(
+						const { jobID, transcriptText } = await transcribe(
 							this.token,
 							this.stackUploads[x].path,
 						);
-						res.download(`${dirname}./downloads/${jobID}.txt`);
+						// save content in our database:
+						this.grpcClient
+							.save()
+							.sendMessage({
+								url,
+								file_name: this.nameMp3,
+								transcription: transcriptText,
+								created_by: "",
+								created_at: "",
+							})
+							.then((response) => {
+								console.log("response: ", response);
+							})
+							.catch((err) => console.error(err));
+
+						res.set({
+							"Content-Disposition": `attachment; filename="${video.file_name}"`,
+						});
+						res.send(transcriptText);
+						// res.download(`${dirname}./downloads/${jobID}.txt`);
 					} else {
 						x++;
 					}
