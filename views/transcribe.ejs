@@ -58,39 +58,36 @@
                         <strong>First:</strong> Upload your mp3 file.<br>
                         <strong>Second:</strong>  We give you price and waiting time.<br>
                         <strong>Third:</strong>  Pay and wait until the file is downloaded.<br><br><br>
-                        <strong id="show-wait">If you want download mp3 file from Youtube, you can do it <a href="https://conv2.be/" target="_blank">here.</a></strong>
+                        
+                        <span class="parpadea text"><strong>PLEASE WAIT UNTIL THE FILE IS DOWNLOADED</strong><br><br>
                         </p>
                     </div>   
-                    <br>
+                 
 
                 
                     <div>
 
-                        <form action="/download_from_url" method="post" target="_blank">
-                            <input id="url" type="text" name="url" value="https://www.youtube.com/watch?v=QAQ3eJCdTc8">
-                            <input id="btnDownloadFromYoutube" type="submit" value="DOWNLOAD FROM YOUTUBE URL">
+                        <form action="/transcribe?url=<%=url%>" method="post">  
+                            <label id="transcribeText">click to start the transcription</label>
+                            <input id="transcribe" type="submit" value="TRANSCRIBE FILE">
                         </form>
 
-                        <!-- <form action="/uploadFile" method="post" enctype="multipart/form-data" target="_blank">
-                            <input id="file" type="file" name="file">
-                            <input id="btnUpload" type="submit" value="UPLOAD MP3 FILE">
-                        </form> -->
-                
-                        <span class="parpadea text" id="labelSpan"></span>
                         <script>
-                            const file = document.getElementById('file');
-                            const btnUpload = document.getElementById('btnUpload');
-                            const labelSpan = document.getElementById('labelSpan');
-                            
-                            btnUpload.onclick = alertUpload;
-                            
-                            function alertUpload (){
-                                file.style.display = "none";
-                                btnUpload.style.display = "none";
-                                labelSpan.innerHTML = "I'm uploading the file, please wait...";
+                            let btnGoTranscribe = document.getElementById('transcribe');
+                            let transcribeText = document.getElementById('transcribeText');
+                            let transcribe = document.getElementById('transcribe');
+
+                            btnGoTranscribe.onclick = alertTranscribe;
+
+                            function alertTranscribe(){
+                                alert("I am transcribing, please wait...");
+                                transcribeText.innerHTML = "<label>I am transcribing, please wait...</label>";
+                                transcribe.style.display = "none"
                             }
+
+
                         </script>
-                   
+                        
                     </div>
                   
                 

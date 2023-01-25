@@ -54,41 +54,10 @@
                     </div>
                     <div>
                         <br>
-                        <p class= "secondline"><font size="2">
-                        <strong>First:</strong> Upload your mp3 file.<br>
-                        <strong>Second:</strong>  We give you price and waiting time.<br>
-                        <strong>Third:</strong>  Pay and wait until the file is downloaded.<br><br><br>
-                        
-                        <span class="parpadea text"><strong>PLEASE WAIT UNTIL THE FILE IS DOWNLOADED</strong><br><br>
+                        <p class= "secondline">
+                            <strong>Unexpected error: <%= message %></strong>.<br>
                         </p>
-                    </div>   
-                 
-
-                
-                    <div>
-
-                        <form action="/goTranscribe" method="post">
-                            <label id="transcribeText">click to start the transcription</label>
-                            <input id="transcribe" type="submit" value="TRANSCRIBE FILE">
-                        </form>
-
-                        <script>
-                            let btnGoTranscribe = document.getElementById('transcribe');
-                            let transcribeText = document.getElementById('transcribeText');
-                            let transcribe = document.getElementById('transcribe');
-
-                            btnGoTranscribe.onclick = alertTranscribe;
-
-                            function alertTranscribe(){
-                                alert("I am transcribing, please wait...");
-                                transcribeText.innerHTML = "<label>I am transcribing, please wait...</label>";
-                                transcribe.style.display = "none"
-                            }
-
-
-                        </script>
-                        
-                    </div>
+                    </div>                  
                   
                 
                 </div>
