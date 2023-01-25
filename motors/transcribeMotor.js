@@ -1,7 +1,7 @@
 const revai = require("revai-node-sdk");
 const fs = require("fs");
 
-const transcribe = async (token, pathAudio) => {
+const transcribe = async ({token, buffer}) => {
 	const client = new revai.RevAiApiClient(token);
 
 	// Get account details
@@ -11,7 +11,8 @@ const transcribe = async (token, pathAudio) => {
 	console.log(account);
 
 	// Media may be submitted from a local file
-	let job = await client.submitJobLocalFile(pathAudio);
+	let job = await client.submitJobAudioData(buffer);
+	//let job = await client.submitJobLocalFile(pathAudio);
 
 	console.log(`Job Id: ${job.id}`);
 	console.log(`Status: ${job.status}`);

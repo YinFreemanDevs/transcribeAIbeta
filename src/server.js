@@ -28,11 +28,10 @@ const downloadProto = grpc.loadPackageDefinition(packageDefinition).download;
 
 let dirname = path.join(__dirname, "../");
 
-
 class Server {
 	constructor() {
 		const metadata = new grpc.Metadata();
-		metadata.add('Authorization', `Bearer ${GRPC_TOKEN}`);
+		metadata.add("Authorization", `Bearer ${GRPC_TOKEN}`);
 
 		// Establish connection with the server
 		this.grpcClient = new downloadProto.DownloadService(
@@ -52,7 +51,6 @@ class Server {
 		this.port = process.env.PORT || 3000;
 		this.httpServer = require("http").createServer(this.app);
 
-		this.revai_token = process.env.TOKEN;
 		this.fail = false;
 
 		this.stackOrders = [];
@@ -108,7 +106,7 @@ class Server {
 								const buffer = Buffer.concat(
 									bufferArray.map((d) => Buffer.from(d.data.buffer)),
 								);
-								await redirectToStripe({
+								return await redirectToStripe({
 									expressResponse: res,
 									buffer,
 									stackOrders: server.stackOrders,
@@ -116,7 +114,6 @@ class Server {
 									fileUrl: url,
 									expiration,
 								});
-								console.log("stackOrders: ", server.stackOrders);
 							})
 							.catch((e) => {
 								console.log(`error this.grpcClient.DownloadFile(): ${e}`);
@@ -124,7 +121,7 @@ class Server {
 					} else {
 						console.error(`error Read().sendMessage: ${err}`);
 						res.render("error", {
-							message: 'please contact administrator',
+							message: "please contact administrator",
 						});
 					}
 				});
@@ -141,9 +138,9 @@ class Server {
 			try {
 				const url = req.query.url;
 				const order = this.stackOrders.find((v) => v.url === url);
-				if (!order?.id) {
-					throw new Error("could not find order in stack");
-				}
+				if (!order?.id) throw new Error("could not find order in stack");
+				
+
 				console.log("order.id", order.id);
 				const session = await getStripeSession(order.id);
 
@@ -159,11 +156,10 @@ class Server {
 
 						order.transcription = DEBUG
 							? " test: is a mock"
-							: ({ transcriptText } = await transcribe(
-									server.revai_token,
-									v.path,
-							  ));
-					
+							: ({ transcriptText } = await transcribe({
+									token: server.revai_token,
+									buffer: order.buffer,
+							  }));
 
 						// save content in our database.
 						server.grpcClient
@@ -174,7 +170,9 @@ class Server {
 								transcription: order.transcription,
 								created_by: "TODO",
 								timestamp: Date.now(),
-								created_at: new Date(Date.now()).toLocaleString('en-GB', {timezone:'GMT+1'}),
+								created_at: new Date(Date.now()).toLocaleString("en-GB", {
+									timezone: "GMT+1",
+								}),
 							})
 							.then(() => {
 								res.set({

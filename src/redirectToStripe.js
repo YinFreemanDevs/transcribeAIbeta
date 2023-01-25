@@ -66,6 +66,7 @@ const stripePaymentUrl = async ({
 		url: fileUrl,
 		done: false,
 		ended: false,
+		buffer: buffer,
 		expiration: expiration,
 	});
 	return session.url;
