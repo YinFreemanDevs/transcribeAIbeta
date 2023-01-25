@@ -13,6 +13,8 @@ const { redirectToStripe, getStripeSession } = require("./redirectToStripe");
 
 const PROTO_PATH = process.env.PROTO_PATH;
 const GRPC_SERVER = process.env.GRPC_SERVER;
+const DEBUG = process.env.DEBUG === "true";
+const GRPC_TOKEN = process.env.GRPC_TOKEN;
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 	keepCase: true,
@@ -26,11 +28,12 @@ const downloadProto = grpc.loadPackageDefinition(packageDefinition).download;
 
 let dirname = path.join(__dirname, "../");
 
-const DEBUG = true;
 
 class Server {
 	constructor() {
 		const metadata = new grpc.Metadata();
+		metadata.add('Authorization', `Bearer ${GRPC_TOKEN}`);
+
 		// Establish connection with the server
 		this.grpcClient = new downloadProto.DownloadService(
 			GRPC_SERVER,
@@ -118,13 +121,18 @@ class Server {
 							.catch((e) => {
 								console.log(`error this.grpcClient.DownloadFile(): ${e}`);
 							});
+					} else {
+						console.error(`error Read().sendMessage: ${err}`);
+						res.render("error", {
+							message: 'please contact administrator',
+						});
 					}
 				});
 		});
 
 		this.app.get("/transcribe", (req, res) => {
 			const url = req.query.url;
-			res.render("transcribeFile", {
+			res.render("transcribe", {
 				url,
 			});
 		});
@@ -165,9 +173,10 @@ class Server {
 								file_name: order.name,
 								transcription: order.transcription,
 								created_by: "TODO",
-								created_at: "TODO",
+								timestamp: Date.now(),
+								created_at: new Date(Date.now()).toLocaleString('en-GB', {timezone:'GMT+1'}),
 							})
-							.then((response) => {
+							.then(() => {
 								res.set({
 									"Content-Disposition": `attachment; filename="${order.name}"`,
 								});
@@ -179,7 +188,7 @@ class Server {
 					}
 				}
 
-				console.log("delete order from stack:", v.name);
+				console.log("delete order from stack:", order.name);
 				this.stackOrders.splice(
 					this.stackOrders.findIndex((v) => v.id === session.id),
 					1,
