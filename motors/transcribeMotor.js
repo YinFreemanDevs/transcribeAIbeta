@@ -1,40 +1,59 @@
 const revai = require("revai-node-sdk");
 const fs = require("fs");
 
-const transcribe = async ({token, buffer}) => {
-	const client = new revai.RevAiApiClient(token);
 
-	// Get account details
-	const account = await client.getAccount();
-	console.log(`Account: ${account.email}`);
-	console.log(`Credits remaining: ${account.balance_seconds} seconds`);
-	console.log(account);
+// // set webhook
+// // Set up an optional webhook url to call on completion
+// const notificationConfig = {
+//     url: "https://example.com/callback"
+// };
 
-	// Media may be submitted from a local file
-	let job = await client.submitJobAudioData(buffer);
-	//let job = await client.submitJobLocalFile(pathAudio);
 
-	console.log(`Job Id: ${job.id}`);
-	console.log(`Status: ${job.status}`);
-	console.log(`Created On: ${job.created_on}`);
+const transcribe = async ({ token, buffer }) => {
+	try {
+		const client = new revai.RevAiApiClient(token);
 
-	while (
-		(jobStatus = (await client.getJobDetails(job.id)).status) === "in_progress"
-	) {
-		console.log(`Job ${job.id} is ${jobStatus}`);
-		await new Promise((resolve) => setTimeout(resolve, 5000));
+		// Get account details
+		const account = await client.getAccount();
+		// console.log(`Account: ${account.email}`);
+		console.log(`Credits remaining: ${account.balance_seconds} seconds`);
+		console.log(`account.total_balance: ${account.total_balance}`);//account.total_balance
+		
+		// Media may be submitted from a local file
+		let job = await client.submitJobAudioData(buffer);
+		//let job = await client.submitJobLocalFile(pathAudio);
+		
+		console.log(`Job Id: ${job.id}`);
+		console.log(`Status: ${job.status}`);
+		console.log(`Created On: ${job.created_on}`);
+		
+		let jobDetails = (await client.getJobDetails(job.id))
+		console.log(`Job ${job.id} is ${jobDetails.status}`);
+
+		while (jobDetails.status === "in_progress") {
+			jobDetails = await client.getJobDetails(job.id)
+			console.log(`Job ${job.id} is ${jobDetails.status}`);
+			await new Promise((resolve) => setTimeout(resolve, 3000));
+		}
+
+		if (jobDetails === "failed") {
+			throw new Error(`failed to transcript. job status: ${jobDetails}`)
+		}
+
+		let transcriptText = await client.getTranscriptText(job.id);
+		// var transcriptTextStream = await client.getTranscriptTextStream(job.id);
+		// var transcriptObject = await client.getTranscriptObject(job.id);
+		// var transcriptObjectStream = await client.getTranscriptObjectStream(job.id);
+		// var captionsStream = await client.getCaptions(job.id);
+
+		// fs.writeFileSync(`./downloads/${job.id}.txt`, transcriptText);
+		console.log(`${job.id}.txt is saved`);
+
+		return { jobID: job.id, transcriptText };
+	} catch (err) {
+		console.error(`transcribe: ${err}`);
+		throw err;
 	}
-
-	let transcriptText = await client.getTranscriptText(job.id);
-	// var transcriptTextStream = await client.getTranscriptTextStream(job.id);
-	// var transcriptObject = await client.getTranscriptObject(job.id);
-	// var transcriptObjectStream = await client.getTranscriptObjectStream(job.id);
-	// var captionsStream = await client.getCaptions(job.id);
-
-	fs.writeFileSync(`./downloads/${job.id}.txt`, transcriptText);
-	console.log(`${job.id}.txt is saved`);
-
-	return { jobID: job.id, transcriptText };
 };
 
 module.exports = { transcribe };

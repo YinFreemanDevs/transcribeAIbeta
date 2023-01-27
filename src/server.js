@@ -54,6 +54,7 @@ class Server {
 		this.fail = false;
 
 		this.stackOrders = [];
+		this.revai_token = process.env.TOKEN;
 
 		this.middlewares();
 		this.routes();
@@ -118,12 +119,13 @@ class Server {
 							.catch((e) => {
 								console.log(`error this.grpcClient.DownloadFile(): ${e}`);
 							});
-					} else {
-						console.error(`error Read().sendMessage: ${err}`);
-						res.render("error", {
-							message: "please contact administrator",
-						});
+							return
 					}
+
+					console.error(`error Read().sendMessage: ${err}`);
+					res.render("error", {
+						message: "please contact administrator",
+					});
 				});
 		});
 
@@ -192,6 +194,7 @@ class Server {
 					1,
 				);
 			} catch (err) {
+				console.log(JSON.stringify(err));
 				console.error(`this.app.post("/transcribe"): ${err}`);
 			}
 		});

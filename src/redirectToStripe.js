@@ -1,6 +1,8 @@
 const getMP3Duration = require("get-mp3-duration");
 const stripe = require("stripe")(process.env.STRIPE);
 
+const CURRENCY = "eur";
+const MAX_MINUTES = 15;
 const stripePaymentUrl = async ({
 	stackOrders,
 	expiration,
@@ -11,40 +13,28 @@ const stripePaymentUrl = async ({
 	let duration = getMP3Duration(buffer);
 	// console.log("duration: ", duration);
 
-	let waitMin;
-	let price;
-	let min;
-	let waitingTime;
-	let minutes;
+	let minutes = duration / 60000;
+	if (minutes < MAX_MINUTES) minutes = MAX_MINUTES;
 
-	minutes = duration / 60000;
-	if (minutes < 15) {
-		minutes = 15;
-	}
-	min = Math.round(minutes);
-	waitingTime = (min * 60) / 6;
-	waitingTime = waitingTime / 60;
-	waitMin = Math.round(waitingTime);
-	if (waitMin < 1) {
-		waitMin = 1;
-	}
+	let min = Math.round(minutes);
+	let waitingTime = ((min * 60) / 6) / 60;
+	let waitMin = Math.round(waitingTime);
+	if (waitMin < 1) waitMin = 1;
 
 	let wait = waitMin * 1;
-	if (wait === null) {
-		wait = 60;
-	}
+	if (wait === null) wait = 60;
+
 	console.log("Wait", wait, "minutes...");
-	price = min * 0.18 * 100;
-	price = parseInt(price);
+	let price = parseInt(min * 0.18 * 100);
 
 	const session = await stripe.checkout.sessions.create({
 		line_items: [
 			{
 				price_data: {
-					currency: "eur",
+					currency: CURRENCY,
 					product_data: {
 						name: fileName,
-						description: `THE WAITING TIME IS ${wait} MINUTES. DO NOT CLOSE THIS WINDOW UNTIL THE DOWNLOAD IS READY.`,
+						description: getWaitingDescription(wait),
 					},
 					unit_amount: price,
 				},
@@ -70,8 +60,14 @@ const stripePaymentUrl = async ({
 		expiration: expiration,
 	});
 	return session.url;
+
 };
-const redirectToStripe = async ({
+
+const getWaitingDescription = (wait)=> {
+	return `THE WAITING TIME IS ${wait} MINUTES. DO NOT CLOSE THIS WINDOW UNTIL THE DOWNLOAD IS READY.`;
+}
+
+exports.redirectToStripe = async ({
 	expressResponse,
 	stackOrders,
 	buffer,
@@ -79,7 +75,7 @@ const redirectToStripe = async ({
 	fileUrl,
 	expiration,
 }) => {
-
+	try {
 		const paymentUrl = await stripePaymentUrl({
 			stackOrders,
 			expiration,
@@ -88,8 +84,11 @@ const redirectToStripe = async ({
 			fileUrl,
 		});
 		return expressResponse.redirect(303, paymentUrl);
+	} catch (err) {
+		console.error(`redirectToStripe: ${err}`);
+		throw err;
+	}
 };
-exports.redirectToStripe = redirectToStripe;
 
 exports.getStripeSession = async (stripeSessionID) => {
 	const sessions = await stripe.checkout.sessions.retrieve(stripeSessionID);
