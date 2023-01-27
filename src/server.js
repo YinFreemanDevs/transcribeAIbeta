@@ -1,21 +1,22 @@
 const express = require("express");
-const { transcribe } = require("../motors/transcribeMotor.js");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
 const path = require("path");
 
-const grpc = require("@grpc/grpc-js");
-const protoLoader = require("@grpc/proto-loader");
-const grpc_promise = require("grpc-promise");
 dotenv.config();
-const { redirectToStripe, getStripeSession } = require("./redirectToStripe");
 
 const PROTO_PATH = process.env.PROTO_PATH;
 const GRPC_SERVER = process.env.GRPC_SERVER;
 const DEBUG = process.env.DEBUG === "true";
 const GRPC_TOKEN = process.env.GRPC_TOKEN;
+const { transcribe } = require("../motors/transcribeMotor.js")(
+	process.env.TOKEN,
+);
+const { redirectToStripe, getStripeSession } = require("./redirectToStripe");
 
+const grpc = require("@grpc/grpc-js");
+const protoLoader = require("@grpc/proto-loader");
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 	keepCase: true,
 	longs: String,
@@ -30,19 +31,14 @@ let dirname = path.join(__dirname, "../");
 
 class Server {
 	constructor() {
-		const metadata = new grpc.Metadata();
-		metadata.add("Authorization", `Bearer ${GRPC_TOKEN}`);
+		this.metadata = new grpc.Metadata();
+		this.metadata.add("Authorization", `Bearer ${GRPC_TOKEN}`);
 
 		// Establish connection with the server
 		this.grpcClient = new downloadProto.DownloadService(
 			GRPC_SERVER,
 			grpc.credentials.createInsecure(),
 		);
-		grpc_promise.promisifyAll(this.grpcClient, {
-			metadata: metadata,
-			timeout: 1000000000,
-		});
-
 		this.app = express();
 		this.app.set("view engine", "ejs");
 
@@ -54,7 +50,6 @@ class Server {
 		this.fail = false;
 
 		this.stackOrders = [];
-		this.revai_token = process.env.TOKEN;
 
 		this.middlewares();
 		this.routes();
@@ -84,49 +79,54 @@ class Server {
 			console.log("Request: start-downloading");
 
 			// If is already transcripted then retrieve from db
-			this.grpcClient
-				.Read()
-				.sendMessage({ id: url })
-				.then((video) => {
+			this.grpcClient.Read({ id: url }, this.metadata, (err, video) => {
+				if (!err) {
 					if (video.transcription === "") {
 						// TODO: throw error
 					}
 					res.set({
 						"Content-Disposition": `attachment; filename="${video.file_name}.txt"`,
 					});
-					res.send(video.transcription);
-				})
-				.catch((err) => {
-					if (err.details === "Cannot find video with the ID provided") {
-						console.log("****** donwload file ******");
-						const expiration = Date.now() + 3600000;
-						this.grpcClient
-							.DownloadFile()
-							.sendMessage({ url })
-							.then(async (bufferArray) => {
-								const buffer = Buffer.concat(
-									bufferArray.map((d) => Buffer.from(d.data.buffer)),
-								);
-								return await redirectToStripe({
-									expressResponse: res,
-									buffer,
-									stackOrders: server.stackOrders,
-									fileName: bufferArray[0].file_name,
-									fileUrl: url,
-									expiration,
-								});
-							})
-							.catch((e) => {
-								console.log(`error this.grpcClient.DownloadFile(): ${e}`);
-							});
-							return
-					}
+					return res.send(video.transcription);
+				}
 
-					console.error(`error Read().sendMessage: ${err}`);
-					res.render("error", {
-						message: "please contact administrator",
+				if (err.details !== "Cannot find video with the ID provided") {
+					return expressRedirectError({ res, err });
+				}
+				console.log("****** donwload file ******");
+				const expiration = Date.now() + 3600000;
+				let downloadFileGrpcCall = this.grpcClient.DownloadFile(
+					{
+						url: url,
+					},
+					this.metadata,
+				);
+				let buffers = [];
+				let fileName = "";
+				downloadFileGrpcCall.on("data", function (response) {
+					//console.log("on data", response);
+					buffers.push(Buffer.from(response.data));
+					if (fileName === "") {
+						fileName = response.file_name;
+					}
+				});
+				downloadFileGrpcCall.on("error", function (e) {
+					return expressRedirectError({ res, err: e });
+				});
+
+				downloadFileGrpcCall.on("end", async function () {
+					let buffer = Buffer.concat(buffers);
+
+					return await redirectToStripe({
+						expressResponse: res,
+						buffer,
+						stackOrders: server.stackOrders,
+						fileName: fileName,
+						fileUrl: url,
+						expiration,
 					});
 				});
+			});
 		});
 
 		this.app.get("/transcribe", (req, res) => {
@@ -141,7 +141,6 @@ class Server {
 				const url = req.query.url;
 				const order = this.stackOrders.find((v) => v.url === url);
 				if (!order?.id) throw new Error("could not find order in stack");
-				
 
 				console.log("order.id", order.id);
 				const session = await getStripeSession(order.id);
@@ -156,17 +155,16 @@ class Server {
 						console.log(`transcribe ${session.id}:`, order.name);
 						order.ended = true;
 
-						order.transcription = DEBUG
-							? " test: is a mock"
-							: ({ transcriptText } = await transcribe({
-									token: server.revai_token,
-									buffer: order.buffer,
-							  }));
+						if (DEBUG) {
+							order.transcription = " test: is a mock";
+						} else {
+							const { transcriptText } = await transcribe(order.buffer);
+							order.transcription = transcriptText;
+						}
 
 						// save content in our database.
-						server.grpcClient
-							.save()
-							.sendMessage({
+						server.grpcClient.Save(
+							{
 								url,
 								file_name: order.name,
 								transcription: order.transcription,
@@ -175,16 +173,19 @@ class Server {
 								created_at: new Date(Date.now()).toLocaleString("en-GB", {
 									timezone: "GMT+1",
 								}),
-							})
-							.then(() => {
+							},
+							server.metadata,
+							(err) => {
+								if (err) {
+									console.error(`grpcClient.save().sendMessage ${err}`);
+									return expressRedirectError({ res, err });
+								}
 								res.set({
-									"Content-Disposition": `attachment; filename="${order.name}"`,
+									"Content-Disposition": `attachment; filename="${order.name}.txt"`,
 								});
-								res.send(order.transcription);
-							})
-							.catch((err) => {
-								console.error(`grpcClient.save().sendMessage ${err}`);
-							});
+								return res.send(order.transcription);
+							},
+						);
 					}
 				}
 
@@ -207,4 +208,10 @@ class Server {
 	}
 }
 
+const expressRedirectError = ({ res, err }) => {
+	console.error(`error Read().sendMessage: ${err}`);
+	res.render("error", {
+		message: "please contact administrator",
+	});
+};
 module.exports = Server;

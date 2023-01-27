@@ -1,5 +1,4 @@
 const revai = require("revai-node-sdk");
-const fs = require("fs");
 
 
 // // set webhook
@@ -8,8 +7,7 @@ const fs = require("fs");
 //     url: "https://example.com/callback"
 // };
 
-
-const transcribe = async ({ token, buffer }) => {
+const transcribe = (token) => async (buffer) => {
 	try {
 		const client = new revai.RevAiApiClient(token);
 
@@ -36,17 +34,17 @@ const transcribe = async ({ token, buffer }) => {
 			await new Promise((resolve) => setTimeout(resolve, 3000));
 		}
 
-		if (jobDetails === "failed") {
-			throw new Error(`failed to transcript. job status: ${jobDetails}`)
+		if (jobDetails.status === "failed") {
+			console.error(`failed to transcript. job status: ${jobDetails.id}`);
+			throw new Error("failed to transcript")
 		}
-
-		let transcriptText = await client.getTranscriptText(job.id);
+		
+		let transcriptText = await client.getTranscriptText(jobDetails.id);
 		// var transcriptTextStream = await client.getTranscriptTextStream(job.id);
 		// var transcriptObject = await client.getTranscriptObject(job.id);
 		// var transcriptObjectStream = await client.getTranscriptObjectStream(job.id);
 		// var captionsStream = await client.getCaptions(job.id);
 
-		// fs.writeFileSync(`./downloads/${job.id}.txt`, transcriptText);
 		console.log(`${job.id}.txt is saved`);
 
 		return { jobID: job.id, transcriptText };
@@ -56,4 +54,10 @@ const transcribe = async ({ token, buffer }) => {
 	}
 };
 
-module.exports = { transcribe };
+const init = (token) => {
+	return {
+		transcribe: transcribe(token),
+	}
+}
+
+module.exports = init;
