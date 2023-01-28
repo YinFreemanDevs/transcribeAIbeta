@@ -25,7 +25,6 @@
     "express-fileupload": "^1.4.0",
     "get-mp3-duration": "^1.0.0",
     "google-protobuf": "^3.21.2",
-    "grpc": "^1.24.11",
     "revai-node-sdk": "^3.5.1",
     "stripe": "^10.8.0"
   },
