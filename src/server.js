@@ -3,6 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
 const path = require("path");
+const fs = require("fs");
 
 dotenv.config();
 
@@ -34,14 +35,16 @@ class Server {
 		this.metadata = new grpc.Metadata();
 		this.metadata.add("Authorization", `Bearer ${GRPC_TOKEN}`);
 
+		const root_cert = fs.readFileSync(process.env.GRPC_CERTIFICATE);
+		const ssl_creds = grpc.credentials.createSsl(root_cert);
 		// Establish connection with the server
 		this.grpcClient = new downloadProto.DownloadService(
 			GRPC_SERVER,
-			grpc.credentials.createInsecure(),
+			ssl_creds,
 		);
+
 		this.app = express();
 		this.app.set("view engine", "ejs");
-
 		this.app.set("views", `${dirname}/views`);
 
 		this.port = process.env.PORT || 3000;
