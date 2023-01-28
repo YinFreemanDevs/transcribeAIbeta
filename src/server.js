@@ -42,7 +42,7 @@ class Server {
 		this.app = express();
 		this.app.set("view engine", "ejs");
 
-		this.app.set("views", "./views");
+		this.app.set("views", "../views");
 
 		this.port = process.env.PORT || 3000;
 		this.httpServer = require("http").createServer(this.app);

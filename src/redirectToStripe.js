@@ -3,6 +3,7 @@ const stripe = require("stripe")(process.env.STRIPE);
 
 const CURRENCY = "eur";
 const MAX_MINUTES = 15;
+const HOST = process.env.HOST;
 const stripePaymentUrl = async ({
 	stackOrders,
 	expiration,
@@ -44,8 +45,8 @@ const stripePaymentUrl = async ({
 		metadata: { name: fileName },
 		mode: "payment",
 		client_reference_id: fileUrl,
-		success_url: `http://localhost:3000/transcribe?url=${fileUrl}`,
-		cancel_url: "http://localhost:3000",
+		success_url: `${HOST}/transcribe?url=${fileUrl}`,
+		cancel_url: HOST,
 	});
 
 	stackOrders.push({
